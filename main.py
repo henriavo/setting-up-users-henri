@@ -81,98 +81,96 @@ welcomeForm = """
 import webapp2
 import re
 
+
 class MainHandler(webapp2.RequestHandler):
+    USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
+    PASSWORD_RE = re.compile(r"^.{3,20}$")
+    EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
 
-	USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
-	PASSWORD_RE = re.compile(r"^.{3,20}$")
-	EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
+    def get(self):
+        self.writeForm()
 
+    def writeForm(self, message={"one": "",
+                                 "two": "",
+                                 "three": "",
+                                 "four": "",
+                                 "aUserName": "",
+                                 "anEmail": ""}):
+        self.response.write(form % message)
 
-	def get(self):
-		self.writeForm()
+    def post(self):
+        errorMsg = {"one": "",
+                    "two": "",
+                    "three": "",
+                    "four": "",
+                    "aUserName": "",
+                    "anEmail": ""}
 
+        username = self.request.get('username')
+        password = self.request.get('password')
+        verify = self.request.get('verify')
+        email = self.request.get('email')
 
-	def writeForm(self, message={"one": "",
-              "two": "",
-              "three": "",
-              "four": "",
-              "aUserName":"",
-              "anEmail":""}):
-		self.response.write(form % message)
+        errorFound = False
 
-	def post(self):
-		errorMsg = {"one": "",
-              "two": "",
-              "three": "",
-              "four": "",
-              "aUserName":"",
-              "anEmail":""}
+        if (self.verifyUsername(username)):
+            pass
+        else:
+            errorFound = True
+            errorMsg['one'] = "That's not a valid username"
+            errorMsg['aUserName'] = username
+            errorMsg['anEmail'] = email
 
-		username = self.request.get('username')
-		password = self.request.get('password')
-		verify = self.request.get('verify')
-		email = self.request.get('email')
+        if (self.verifyPass(password)):
+            pass
+        else:
+            errorFound = True
+            errorMsg['two'] = "That's not a valid password"
+            errorMsg['aUserName'] = username
+            errorMsg['anEmail'] = email
 
-		errorFound = False
+        if (password == verify):
+            pass
+        else:
+            errorFound = True
+            errorMsg['three'] = "Your passwords didn't match"
+            errorMsg['aUserName'] = username
+            errorMsg['anEmail'] = email
 
-		if(self.verifyUsername(username)):
-			pass
-		else:
-			errorFound = True
-			errorMsg['one'] = "That's not a valid username"
-			errorMsg['aUserName'] = username
-			errorMsg['anEmail'] = email
+        if (self.verifyEmail(email)):
+            pass
+        else:
+            errorFound = True
+            errorMsg['four'] = "That's not a valid email."
+            errorMsg['aUserName'] = username
+            errorMsg['anEmail'] = email
 
-		if(self.verifyPass(password)):
-			pass
-		else:
-			errorFound = True
-			errorMsg['two'] = "That's not a valid password"
-			errorMsg['aUserName'] = username
-			errorMsg['anEmail'] = email
+        # determine how to respond
+        if (errorFound == False):
+            print "DICTIONARY: %s" % errorMsg.items()
+            self.redirect("/welcome?username=%s" % username)
 
-		if(password == verify):
-			pass
-		else:
-			errorFound = True
-			errorMsg['three'] = "Your passwords didn't match"
-			errorMsg['aUserName'] = username
-			errorMsg['anEmail'] = email
+        else:
+            print "DICTIONARY: %s" % errorMsg.items()
+            self.writeForm(errorMsg)
 
-		if(self.verifyEmail(email)):
-			pass
-		else:
-			errorFound = True
-			errorMsg['four'] = "That's not a valid email."
-			errorMsg['aUserName'] = username
-			errorMsg['anEmail'] = email
+    def verifyUsername(self, username):
+        return self.USER_RE.match(username)
 
-		#determine how to respond
-		if(errorFound == False):
-			print "DICTIONARY: %s" % errorMsg.items()
-			self.redirect("/welcome?username=%s" % username)
-			
-		else:
-			print "DICTIONARY: %s" % errorMsg.items()
-			self.writeForm(errorMsg)
+    def verifyPass(self, password):
+        return self.PASSWORD_RE.match(password)
 
-	def verifyUsername(self, username):
-		return self.USER_RE.match(username)
-
-	def verifyPass(self, password):
-		return self.PASSWORD_RE.match(password)
-
-	def verifyEmail(self, email):
-		return self.EMAIL_RE.match(email)
+    def verifyEmail(self, email):
+        return self.EMAIL_RE.match(email)
 
 
-class WelcomeHandler(webapp2.RequestHandler): 
-	def get(self):
-		verifiedUserName = self.request.get('username')
-		self.response.write("<b>Welcome, %s!<b>" % verifiedUserName)
+class WelcomeHandler(webapp2.RequestHandler):
+    def get(self):
+        verifiedUserName = self.request.get('username')
+        self.response.write("<b>Welcome, %s!<b>" % verifiedUserName)
 
 
 app = webapp2.WSGIApplication([
     ('/', MainHandler),
-    ('/welcome',WelcomeHandler)
+    ('/welcome', WelcomeHandler)
 ], debug=True)
