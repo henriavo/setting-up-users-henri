@@ -1,88 +1,30 @@
 #!/usr/bin/env python
 #
-form = """
-<html>
-  <head>
-    <title>Sign Up</title>
-    <style type="text/css">
-      .label {text-align: right}
-      .error {color: red}
-    </style>
-
-  </head>
-
-  <body>
-    <h2>Signup</h2>
-    <form method="post">
-      <table>
-        <tr>
-          <td class="label">
-            Username
-          </td>
-          <td>
-            <input type="text" name="username" value="%(aUserName)s">
-          </td>
-          <td class="error">
-            %(one)s
-          </td>
-        </tr>
-
-        <tr>
-          <td class="label">
-            Password
-          </td>
-          <td>
-            <input type="password" name="password" value="">
-          </td>
-          <td class="error">
-            %(two)s
-          </td>
-        </tr>
-
-        <tr>
-          <td class="label">
-            Verify Password
-          </td>
-          <td>
-            <input type="password" name="verify" value="">
-          </td>
-          <td class="error">
-            %(three)s
-          </td>
-        </tr>
-
-        <tr>
-          <td class="label">
-            Email (optional)
-          </td>
-          <td>
-            <input type="text" name="email" value="%(anEmail)s">
-          </td>
-          <td class="error">
-            %(four)s
-          </td>
-        </tr>
-      </table>
-
-      <input type="submit">
-    </form>
-  </body>
-
-</html>
-"""
-
-welcomeForm = """
-<form> method="get" action="/welcome">
-	<p name="username" ><b>Welcome, %s !</b>.</p>
-</form>
-
-"""
 
 import webapp2
 import re
+import os
+import jinja2
 
+template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
+                               autoescape=True)
 
-class MainHandler(webapp2.RequestHandler):
+##
+class Handler(webapp2.RequestHandler):
+    def write(self, *a, **kwArgs):
+        self.response.write(*a, **kwArgs)
+
+    def render_str(self, template, **params):
+        t = jinja_env.get_template(template)
+        return t.render(params)
+
+    def renderIt(self, template, **kwArgs):
+        self.write(self.render_str(template, **kwArgs))
+
+##
+
+class MainHandler(Handler):
     USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
     PASSWORD_RE = re.compile(r"^.{3,20}$")
     EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
@@ -96,7 +38,13 @@ class MainHandler(webapp2.RequestHandler):
                                  "four": "",
                                  "aUserName": "",
                                  "anEmail": ""}):
-        self.response.write(form % message)
+
+        self.renderIt("form.html", one=message.get("one"),
+                                    two=message.get("two"),
+                                    three=message.get("three"),
+                                    four=message.get("four"),
+                                    aUserName=message.get("aUserName"),
+                                    anEmail=message.get("anEmail"))
 
     def post(self):
         errorMsg = {"one": "",
@@ -164,10 +112,10 @@ class MainHandler(webapp2.RequestHandler):
         return self.EMAIL_RE.match(email)
 
 
-class WelcomeHandler(webapp2.RequestHandler):
+class WelcomeHandler(Handler):
     def get(self):
         verifiedUserName = self.request.get('username')
-        self.response.write("<b>Welcome, %s!<b>" % verifiedUserName)
+        self.renderIt("welcomeForm.html", userName=verifiedUserName)
 
 
 app = webapp2.WSGIApplication([
