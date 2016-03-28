@@ -8,6 +8,9 @@ import jinja2
 import DbDefinitions
 import PasswordHash
 
+from google.appengine.ext import db
+
+
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
                                autoescape=True)
@@ -70,26 +73,22 @@ class MainHandler(Handler):
 
         errorFound = self.processEmail(email, errorFound, errorMsg, username)
 
-        # determine how to respond
+        errorFound = self.checkForDuplicateUsername(email, errorFound, errorMsg, username)
+
         if (errorFound == False):
-            #HANDLE NEW USER,  hash and salt the password
             salt = PasswordHash.make_salt()
             passwordHash = PasswordHash.make_pw_hash(username,password,salt)
-
 
             newuser = DbDefinitions.User(username=username,password=passwordHash,email=email)
             newuser.put()
             print "THE ID: " + str(newuser.key().id())
             newuserDbId = str(newuser.key().id())
-
             self.redirect("/welcome/%s" % newuserDbId)
-
-
 
         else:
             self.writeForm(errorMsg)
 
-    #helper method below
+    #HELPER METHODS BELOW
 
     def processEmail(self, email, errorFound, errorMsg, username):
         if (self.verifyEmail(email)):
@@ -141,16 +140,27 @@ class MainHandler(Handler):
     def verifyEmail(self, email):
         return self.EMAIL_RE.match(email)
 
+    def checkForDuplicateUsername(self, email, errorFound, errorMsg, username):
+        dbCursor = db.GqlQuery("SELECT * from User WHERE username = :1", username)
+
+        if ((sum(1 for e in dbCursor)) > 0):
+            errorFound = True
+            errorMsg['one'] = "That user already exists."
+            errorMsg['aUserName'] = username
+            errorMsg['anEmail'] = email
+        else:
+            pass
+        return errorFound
+
 
 class WelcomeHandler(Handler):
     def get(self,newuser_id):
-
         auser = DbDefinitions.User.get_by_id(long(newuser_id))
         if auser:
             self.renderIt("welcomeForm.html", userName=auser.username)
 
 
 app = webapp2.WSGIApplication([
-    ('/', MainHandler),
+    ('/signup', MainHandler),
     ('/welcome/([0-9]+)', WelcomeHandler)
 ], debug=True)
